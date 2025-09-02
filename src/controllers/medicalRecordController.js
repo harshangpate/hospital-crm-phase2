@@ -11,15 +11,247 @@ const generateRecordId = async () => {
     },
     order: [['createdAt', 'DESC']]
   });
-  
-  const lastId = lastRecord ? 
-    parseInt(lastRecord.recordId.slice(-4)) : 0;
+
+  const lastId = lastRecord ? parseInt(lastRecord.recordId.slice(-4)) : 0;
   return `MR${today}${String(lastId + 1).padStart(4, '0')}`;
 };
 
-// @desc    Get patient medical records timeline
-// @route   GET /api/medical-records/patient/:patientId
-// @access  Private (doctor, admin)
+// @desc Get all medical records with search and filters
+// @route GET /api/medical-records
+// @access Private
+const getMedicalRecords = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const search = req.query.search || '';
+    const recordType = req.query.recordType || '';
+    const offset = (page - 1) * limit;
+
+    let whereCondition = {};
+
+    if (recordType) {
+      whereCondition.recordType = recordType;
+    }
+
+    const includeOptions = [
+      {
+        model: Patient,
+        as: 'patient',
+        attributes: ['firstName', 'lastName', 'patientId', 'phone', 'email'],
+        where: search ? {
+          [Op.or]: [
+            { firstName: { [Op.iLike]: `%${search}%` } },
+            { lastName: { [Op.iLike]: `%${search}%` } },
+            { patientId: { [Op.iLike]: `%${search}%` } }
+          ]
+        } : undefined,
+        required: search ? true : false
+      },
+      {
+        model: Doctor,
+        as: 'doctor',
+        include: [
+          {
+            model: User,
+            as: 'user',
+            attributes: ['firstName', 'lastName']
+          }
+        ]
+      }
+    ];
+
+    const { count, rows: records } = await MedicalRecord.findAndCountAll({
+      where: whereCondition,
+      include: includeOptions,
+      limit,
+      offset,
+      order: [['createdAt', 'DESC']],
+      distinct: true
+    });
+
+    res.json({
+      success: true,
+      medicalRecords: {
+        records,
+        pagination: {
+          page,
+          pages: Math.ceil(count / limit),
+          limit,
+          total: count
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Get medical records error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc Get single medical record by ID
+// @route GET /api/medical-records/:id
+// @access Private (doctor, admin, nurse)
+const getMedicalRecord = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const record = await MedicalRecord.findOne({
+      where: { id: id },
+      include: [
+        {
+          model: Patient,
+          as: 'patient',
+          attributes: ['firstName', 'lastName', 'patientId', 'phone', 'email']
+        },
+        {
+          model: Doctor,
+          as: 'doctor',
+          include: [
+            {
+              model: User,
+              as: 'user',
+              attributes: ['firstName', 'lastName']
+            }
+          ],
+          attributes: ['specialization', 'department']
+        },
+        {
+          model: Appointment,
+          as: 'appointment',
+          attributes: ['appointmentId', 'appointmentDate'],
+          required: false
+        }
+      ]
+    });
+
+    if (!record) {
+      return res.status(404).json({
+        success: false,
+        message: 'Medical record not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      record
+    });
+
+  } catch (error) {
+    console.error('Get medical record error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc Update medical record
+// @route PUT /api/medical-records/:id
+// @access Private (doctor)
+const updateMedicalRecord = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if user is a doctor
+    const doctor = await Doctor.findOne({ where: { userId: req.user.userId } });
+    if (!doctor) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only doctors can update medical records'
+      });
+    }
+
+    const record = await MedicalRecord.findOne({
+      where: { id: id }
+    });
+
+    if (!record) {
+      return res.status(404).json({
+        success: false,
+        message: 'Medical record not found'
+      });
+    }
+
+    // Extract and clean the data - handle empty appointmentId
+    const {
+      patientId,
+      appointmentId: rawAppointmentId,
+      recordType,
+      chiefComplaint,
+      historyOfPresentIllness,
+      physicalExamination,
+      diagnosis,
+      differentialDiagnosis,
+      treatmentPlan,
+      followUpInstructions,
+      doctorNotes,
+      isConfidential,
+      status
+    } = req.body;
+
+    // Convert empty string to null for UUID fields
+    const appointmentId = rawAppointmentId && rawAppointmentId.trim() !== '' ? rawAppointmentId : null;
+
+    await record.update({
+      patientId,
+      appointmentId,
+      recordType,
+      chiefComplaint,
+      historyOfPresentIllness,
+      physicalExamination,
+      diagnosis,
+      differentialDiagnosis,
+      treatmentPlan,
+      followUpInstructions,
+      doctorNotes,
+      isConfidential: isConfidential || false,
+      status: status || 'draft'
+    });
+
+    // Get updated record with full details
+    const updatedRecord = await MedicalRecord.findByPk(record.id, {
+      include: [
+        {
+          model: Patient,
+          as: 'patient',
+          attributes: ['firstName', 'lastName', 'patientId', 'phone', 'email']
+        },
+        {
+          model: Doctor,
+          as: 'doctor',
+          include: [
+            {
+              model: User,
+              as: 'user',
+              attributes: ['firstName', 'lastName']
+            }
+          ],
+          attributes: ['specialization', 'department']
+        }
+      ]
+    });
+
+    res.json({
+      success: true,
+      message: 'Medical record updated successfully',
+      record: updatedRecord
+    });
+
+  } catch (error) {
+    console.error('Update medical record error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc Get patient medical records timeline
+// @route GET /api/medical-records/patient/:patientId
+// @access Private (doctor, admin)
 const getPatientMedicalRecords = async (req, res) => {
   try {
     const { patientId } = req.params;
@@ -29,7 +261,7 @@ const getPatientMedicalRecords = async (req, res) => {
     const offset = (page - 1) * limit;
 
     let whereCondition = { patientId };
-    
+
     if (recordType) {
       whereCondition.recordType = recordType;
     }
@@ -111,9 +343,9 @@ const getPatientMedicalRecords = async (req, res) => {
   }
 };
 
-// @desc    Create new medical record
-// @route   POST /api/medical-records
-// @access  Private (doctor)
+// @desc Create new medical record
+// @route POST /api/medical-records
+// @access Private (doctor)
 const createMedicalRecord = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -134,13 +366,45 @@ const createMedicalRecord = async (req, res) => {
       });
     }
 
+    // Extract and clean the data - FIX THE EMPTY UUID ISSUE
+    const {
+      patientId,
+      appointmentId: rawAppointmentId,
+      recordType,
+      chiefComplaint,
+      historyOfPresentIllness,
+      physicalExamination,
+      diagnosis,
+      differentialDiagnosis,
+      treatmentPlan,
+      followUpInstructions,
+      doctorNotes,
+      isConfidential,
+      status
+    } = req.body;
+
+    // Convert empty string to null for UUID fields
+    const appointmentId = rawAppointmentId && rawAppointmentId.trim() !== '' ? rawAppointmentId : null;
+
     // Generate unique record ID
     const recordId = await generateRecordId();
 
     const medicalRecord = await MedicalRecord.create({
-      ...req.body,
       recordId,
-      doctorId: doctor.id
+      patientId,
+      doctorId: doctor.id,
+      appointmentId, // Now properly null instead of empty string
+      recordType,
+      chiefComplaint,
+      historyOfPresentIllness,
+      physicalExamination,
+      diagnosis,
+      differentialDiagnosis,
+      treatmentPlan,
+      followUpInstructions,
+      doctorNotes,
+      isConfidential: isConfidential || false,
+      status: status || 'draft'
     });
 
     // Get the created record with full details
@@ -180,9 +444,9 @@ const createMedicalRecord = async (req, res) => {
   }
 };
 
-// @desc    Record vital signs
-// @route   POST /api/medical-records/vital-signs
-// @access  Private (doctor, nurse)
+// @desc Record vital signs
+// @route POST /api/medical-records/vital-signs
+// @access Private (doctor, nurse)
 const recordVitalSigns = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -230,9 +494,9 @@ const recordVitalSigns = async (req, res) => {
   }
 };
 
-// @desc    Get patient vital signs history
-// @route   GET /api/medical-records/vital-signs/:patientId
-// @access  Private (doctor, nurse)
+// @desc Get patient vital signs history
+// @route GET /api/medical-records/vital-signs/:patientId
+// @access Private (doctor, nurse)
 const getPatientVitalSigns = async (req, res) => {
   try {
     const { patientId } = req.params;
@@ -266,12 +530,11 @@ const getPatientVitalSigns = async (req, res) => {
     if (vitalSigns.length > 0) {
       // Calculate averages
       const vitals = ['bloodPressureSystolic', 'bloodPressureDiastolic', 'heartRate', 'temperature', 'respiratoryRate', 'oxygenSaturation'];
-      
       vitals.forEach(vital => {
         const values = vitalSigns
           .map(v => v[vital])
           .filter(v => v !== null && v !== undefined);
-        
+
         if (values.length > 0) {
           stats.averages[vital] = {
             avg: (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1),
@@ -301,6 +564,9 @@ const getPatientVitalSigns = async (req, res) => {
 };
 
 module.exports = {
+  getMedicalRecords,
+  getMedicalRecord,
+  updateMedicalRecord,
   getPatientMedicalRecords,
   createMedicalRecord,
   recordVitalSigns,

@@ -13,12 +13,26 @@ const app = express();
 // Connect to database
 connectDB();
 
+// ✅ SINGLE CORS CONFIGURATION (Fixed)
+app.use(cors({
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:5173',  // Your Vite frontend
+    'http://localhost:5174'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 // Security middleware
 app.use(helmet());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
-}));
+
+// ❌ REMOVE THIS DUPLICATE CORS - This was causing the conflict!
+// app.use(cors({
+//   origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+//   credentials: true
+// }));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -70,6 +84,7 @@ app.get('/api/test', async (req, res) => {
   }
 });
 
+// API Routes
 app.use('/api/auth', require('./src/routes/auth'));
 app.use('/api/patients', require('./src/routes/patients'));
 app.use('/api/doctors', require('./src/routes/doctors'));
@@ -86,10 +101,6 @@ app.use('/api/ambulances', require('./src/routes/ambulances'));
 app.use('/api/pharmacy', require('./src/routes/pharmacy'));
 app.use('/api/analytics', require('./src/routes/analytics'));
 app.use('/api/integrations', require('./src/routes/integrations'));
-
-// Routes placeholder for future
-// app.use('/api/auth', require('./src/routes/auth'));
-// app.use('/api/patients', require('./src/routes/patients'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

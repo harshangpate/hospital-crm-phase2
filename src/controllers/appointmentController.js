@@ -100,6 +100,7 @@ const getAllAppointments = async (req, res) => {
       whereCondition.status = status;
     }
 
+    // FIX: Properly destructure the result from findAndCountAll
     const { count, rows: appointments } = await Appointment.findAndCountAll({
       where: whereCondition,
       include: [
@@ -138,7 +139,7 @@ const getAllAppointments = async (req, res) => {
         limit,
         total: count
       },
-      appointments
+      data: appointments  // Change from 'appointments' to 'data' to match your frontend
     });
 
   } catch (error) {
@@ -149,6 +150,7 @@ const getAllAppointments = async (req, res) => {
     });
   }
 };
+
 
 // @desc    Get single appointment
 // @route   GET /api/appointments/:id

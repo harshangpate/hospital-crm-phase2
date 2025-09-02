@@ -1,30 +1,46 @@
 const express = require('express');
 const router = express.Router();
-const {
-  getAllDoctors,
-  getDoctor,
-  createDoctor,
-  updateDoctor
-} = require('../controllers/doctorController');
+const { Doctor, User } = require('../models');
 const { protect, authorize } = require('../middleware/auth');
 
 // All routes are protected
 router.use(protect);
 
 // @route   GET /api/doctors
-// @access  All authenticated users
-router.get('/', getAllDoctors);
+// @desc    Get all doctors for dropdown selection
+// @access  Private
+const getDoctors = async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 100;
+    
+    const doctors = await Doctor.findAll({
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['firstName', 'lastName', 'email'],
+          where: { role: 'doctor', isActive: true }
+        }
+      ],
+      attributes: ['id', 'specialization', 'department'],
+      limit
+    });
 
-// @route   GET /api/doctors/:id
-// @access  All authenticated users
-router.get('/:id', getDoctor);
+    res.json({
+      success: true,
+      data: doctors,
+      total: doctors.length
+    });
 
-// @route   POST /api/doctors
-// @access  Admin only
-router.post('/', authorize('admin'), createDoctor);
+  } catch (error) {
+    console.error('Get doctors error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch doctors'
+    });
+  }
+};
 
-// @route   PUT /api/doctors/:id
-// @access  Admin or own profile
-router.put('/:id', authorize('admin', 'doctor'), updateDoctor);
+router.get('/', authorize('admin', 'doctor', 'nurse', 'receptionist'), getDoctors);
 
 module.exports = router;

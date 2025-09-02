@@ -8,6 +8,8 @@ const {
   getExecutiveSummary
 } = require('../controllers/analyticsController');
 const { protect, authorize } = require('../middleware/auth');
+const { getAdminDashboard, getDepartmentMetrics } = require('../controllers/dashboardController');
+
 
 // All routes are protected
 router.use(protect);
@@ -31,5 +33,8 @@ router.get('/operations', authorize('admin', 'nurse'), getOperationalAnalytics);
 // @route   GET /api/analytics/clinical
 // @access  Admin, Doctor
 router.get('/clinical', authorize('admin', 'doctor'), getClinicalAnalytics);
+
+router.get('/admin-dashboard', authorize('admin'), getAdminDashboard);
+router.get('/department-metrics', authorize('admin'), getDepartmentMetrics);
 
 module.exports = router;
