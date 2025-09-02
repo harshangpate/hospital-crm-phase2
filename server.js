@@ -79,6 +79,13 @@ app.use('/api/prescriptions', require('./src/routes/prescriptions'));
 app.use('/api/lab-reports', require('./src/routes/labReports'));
 app.use('/api/billing', require('./src/routes/billing'));
 app.use('/api/inventory', require('./src/routes/inventory'));
+app.use('/api/wards', require('./src/routes/wards'));
+app.use('/api/staff', require('./src/routes/staff'));
+app.use('/api/emergency', require('./src/routes/emergency'));
+app.use('/api/ambulances', require('./src/routes/ambulances'));
+app.use('/api/pharmacy', require('./src/routes/pharmacy'));
+app.use('/api/analytics', require('./src/routes/analytics'));
+app.use('/api/integrations', require('./src/routes/integrations'));
 
 // Routes placeholder for future
 // app.use('/api/auth', require('./src/routes/auth'));

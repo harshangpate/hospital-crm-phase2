@@ -24,9 +24,9 @@ const User = sequelize.define('User', {
     }
   },
   role: {
-    type: DataTypes.ENUM('admin', 'doctor', 'nurse', 'receptionist', 'lab_technician', 'pharmacist'),
+    type: DataTypes.ENUM('admin', 'doctor', 'nurse', 'receptionist', 'pharmacist', 'lab_technician', 'patient'),
     allowNull: false,
-    defaultValue: 'receptionist'
+    defaultValue: 'patient'
   },
   firstName: {
     type: DataTypes.STRING,
@@ -65,7 +65,7 @@ const User = sequelize.define('User', {
   }
 });
 
-User.prototype.comparePassword = async function(candidatePassword) {
+User.prototype.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
