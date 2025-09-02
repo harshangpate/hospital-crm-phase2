@@ -213,16 +213,13 @@ const validateAppointment = [
     .withMessage('Notes must be less than 1000 characters')
 ];
 
-// Prescription validation
+// Prescription validation - FIXED VERSION (removed doctorId)
 const validatePrescription = [
   body('patientId')
     .notEmpty()
     .isUUID()
     .withMessage('Valid patient ID is required'),
-  body('doctorId')
-    .notEmpty()
-    .isUUID()
-    .withMessage('Valid doctor ID is required'),
+  // REMOVED: doctorId validation (comes from authenticated user)
   body('appointmentId')
     .optional()
     .isUUID()
