@@ -32,7 +32,7 @@ const Billing = sequelize.define('Billing', {
     allowNull: false
   },
   services: {
-    type: DataTypes.JSONB, // Array of services with prices
+    type: DataTypes.JSONB,
     allowNull: false
   },
   subtotal: {
@@ -54,7 +54,7 @@ const Billing = sequelize.define('Billing', {
   },
   taxPercentage: {
     type: DataTypes.DECIMAL(5, 2),
-    defaultValue: 18.00 // GST
+    defaultValue: 18.00
   },
   totalAmount: {
     type: DataTypes.DECIMAL(12, 2),
@@ -109,38 +109,43 @@ const Billing = sequelize.define('Billing', {
   }
 });
 
-// Calculate totals automatically
+// Replace the entire beforeSave hook in src/models/Billing.js
 Billing.addHook('beforeSave', (bill) => {
   // Calculate subtotal from services
   if (bill.services && Array.isArray(bill.services)) {
-    bill.subtotal = bill.services.reduce((sum, service) => {
+    const subtotal = bill.services.reduce((sum, service) => {
       return sum + (parseFloat(service.price) * parseFloat(service.quantity || 1));
     }, 0);
-  }
-  
-  // Apply discount
-  const discountAmt = bill.discountPercentage > 0 
-    ? (bill.subtotal * bill.discountPercentage / 100)
-    : (bill.discountAmount || 0);
-  bill.discountAmount = discountAmt;
-  
-  // Calculate tax
-  const afterDiscount = bill.subtotal - discountAmt;
-  bill.taxAmount = afterDiscount * (bill.taxPercentage / 100);
-  
-  // Calculate total
-  bill.totalAmount = afterDiscount + bill.taxAmount;
-  
-  // Calculate outstanding
-  bill.outstandingAmount = bill.totalAmount - (bill.paidAmount || 0);
-  
-  // Update payment status
-  if (bill.paidAmount >= bill.totalAmount) {
-    bill.paymentStatus = 'paid';
-  } else if (bill.paidAmount > 0) {
-    bill.paymentStatus = 'partial';
+    
+    bill.subtotal = subtotal;
+    
+    // Apply discount
+    const discountAmt = bill.discountPercentage > 0 
+      ? (subtotal * bill.discountPercentage / 100)
+      : (bill.discountAmount || 0);
+    bill.discountAmount = discountAmt;
+    
+    // Calculate tax
+    const afterDiscount = subtotal - discountAmt;
+    bill.taxAmount = afterDiscount * (bill.taxPercentage / 100);
+    
+    // Calculate total
+    bill.totalAmount = afterDiscount + bill.taxAmount;
+    
+    // Calculate outstanding
+    bill.outstandingAmount = bill.totalAmount - (bill.paidAmount || 0);
+    
+    // Update payment status
+    if (bill.paidAmount >= bill.totalAmount) {
+      bill.paymentStatus = 'paid';
+    } else if (bill.paidAmount > 0) {
+      bill.paymentStatus = 'partial';
+    } else {
+      bill.paymentStatus = 'unpaid';
+    }
   } else {
-    bill.paymentStatus = 'unpaid';
+    // Fallback if services is not provided correctly
+    bill.totalAmount = bill.totalAmount || 0;
   }
 });
 

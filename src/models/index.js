@@ -10,7 +10,10 @@ const VitalSigns = require('./VitalSigns');
 const Billing = require('./Billing');
 const Payment = require('./Payment');
 const ServiceCatalog = require('./ServiceCatalog');
-
+const InventoryItem = require('./InventoryItem');
+const StockTransaction = require('./StockTransaction');
+const Supplier = require('./Supplier');
+const PurchaseOrder = require('./PurchaseOrder');
 
 // Define associations/relationships
 User.hasOne(Doctor, { foreignKey: 'userId', as: 'doctorProfile' });
@@ -77,6 +80,38 @@ Payment.belongsTo(Patient, { foreignKey: 'patientId', as: 'patient' });
 User.hasMany(Payment, { foreignKey: 'receivedBy', as: 'receivedPayments' });
 Payment.belongsTo(User, { foreignKey: 'receivedBy', as: 'receiver' });
 
+Supplier.hasMany(InventoryItem, { foreignKey: 'supplierId', as: 'items' });
+InventoryItem.belongsTo(Supplier, { foreignKey: 'supplierId', as: 'supplier' });
+
+User.hasMany(InventoryItem, { foreignKey: 'lastUpdatedBy', as: 'updatedItems' });
+InventoryItem.belongsTo(User, { foreignKey: 'lastUpdatedBy', as: 'updatedBy' });
+
+// Stock Transaction relationships
+InventoryItem.hasMany(StockTransaction, { foreignKey: 'itemId', as: 'transactions' });
+StockTransaction.belongsTo(InventoryItem, { foreignKey: 'itemId', as: 'item' });
+
+User.hasMany(StockTransaction, { foreignKey: 'performedBy', as: 'performedTransactions' });
+StockTransaction.belongsTo(User, { foreignKey: 'performedBy', as: 'performer' });
+
+User.hasMany(StockTransaction, { foreignKey: 'approvedBy', as: 'approvedTransactions' });
+StockTransaction.belongsTo(User, { foreignKey: 'approvedBy', as: 'approver' });
+
+Patient.hasMany(StockTransaction, { foreignKey: 'patientId', as: 'stockTransactions' });
+StockTransaction.belongsTo(Patient, { foreignKey: 'patientId', as: 'patient' });
+
+Billing.hasMany(StockTransaction, { foreignKey: 'billId', as: 'stockTransactions' });
+StockTransaction.belongsTo(Billing, { foreignKey: 'billId', as: 'bill' });
+
+// Purchase Order relationships
+Supplier.hasMany(PurchaseOrder, { foreignKey: 'supplierId', as: 'purchaseOrders' });
+PurchaseOrder.belongsTo(Supplier, { foreignKey: 'supplierId', as: 'supplier' });
+
+User.hasMany(PurchaseOrder, { foreignKey: 'createdBy', as: 'createdOrders' });
+PurchaseOrder.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+
+User.hasMany(PurchaseOrder, { foreignKey: 'approvedBy', as: 'approvedOrders' });
+PurchaseOrder.belongsTo(User, { foreignKey: 'approvedBy', as: 'approver' });
+
 module.exports = {
   sequelize,
   User,
@@ -87,7 +122,11 @@ module.exports = {
   LabReport,
   MedicalRecord,
   VitalSigns,
-  Billing,        // Add these
+  Billing,
   Payment,
-  ServiceCatalog
+  ServiceCatalog,
+  InventoryItem,    // Add these
+  StockTransaction,
+  Supplier,
+  PurchaseOrder
 };

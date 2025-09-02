@@ -78,6 +78,7 @@ app.use('/api/medical-records', require('./src/routes/medicalRecords'));
 app.use('/api/prescriptions', require('./src/routes/prescriptions'));
 app.use('/api/lab-reports', require('./src/routes/labReports'));
 app.use('/api/billing', require('./src/routes/billing'));
+app.use('/api/inventory', require('./src/routes/inventory'));
 
 // Routes placeholder for future
 // app.use('/api/auth', require('./src/routes/auth'));

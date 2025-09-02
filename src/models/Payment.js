@@ -40,7 +40,7 @@ const Payment = sequelize.define('Payment', {
     type: DataTypes.STRING
   },
   paymentGateway: {
-    type: DataTypes.STRING // Razorpay, Stripe, etc.
+    type: DataTypes.STRING
   },
   paymentStatus: {
     type: DataTypes.ENUM('pending', 'success', 'failed', 'refunded'),

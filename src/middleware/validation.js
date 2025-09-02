@@ -306,6 +306,65 @@ const validateLabReport = [
     .withMessage('Comments must be less than 1000 characters')
 ];
 
+// Billing validation
+const validateBill = [
+  body('patientId')
+    .notEmpty().withMessage('Patient ID is required')
+    .isUUID().withMessage('Valid Patient ID is required'),
+  body('billType')
+    .isIn(['consultation', 'procedure', 'lab_test', 'pharmacy', 'room_charges', 'emergency'])
+    .withMessage('Invalid bill type'),
+  body('services')
+    .isArray({ min: 1 }).withMessage('At least one service is required'),
+  body('services.*.name')
+    .notEmpty().withMessage('Service name is required'),
+  body('services.*.price')
+    .isDecimal().withMessage('Service price must be a valid number'),
+  body('services.*.quantity')
+    .optional()
+    .isInt({ min: 1 }).withMessage('Quantity must be a positive integer'),
+  body('discountPercentage')
+    .optional()
+    .isDecimal({ min: 0, max: 100 }).withMessage('Discount percentage must be between 0 and 100'),
+  body('notes')
+    .optional()
+    .isLength({ max: 500 }).withMessage('Notes must be less than 500 characters')
+];
+
+// Payment validation
+const validatePayment = [
+  body('billId')
+    .notEmpty().withMessage('Bill ID is required')
+    .isUUID().withMessage('Valid Bill ID is required'),
+  body('amount')
+    .isDecimal({ min: 0.01 }).withMessage('Payment amount must be greater than 0'),
+  body('paymentMethod')
+    .isIn(['cash', 'card', 'upi', 'net_banking', 'cheque', 'insurance'])
+    .withMessage('Invalid payment method'),
+  body('transactionId')
+    .optional()
+    .isLength({ max: 100 }).withMessage('Transaction ID too long')
+];
+
+// Inventory item validation
+const validateInventoryItem = [
+  body('itemName')
+    .notEmpty().withMessage('Item name is required')
+    .isLength({ max: 200 }).withMessage('Item name too long'),
+  body('category')
+    .isIn(['medicine', 'surgical_equipment', 'consumables', 'lab_supplies', 'office_supplies', 'medical_devices'])
+    .withMessage('Invalid category'),
+  body('unit')
+    .isIn(['pieces', 'boxes', 'bottles', 'strips', 'kg', 'grams', 'liters', 'ml'])
+    .withMessage('Invalid unit'),
+  body('unitCost')
+    .isDecimal({ min: 0 }).withMessage('Unit cost must be a positive number'),
+  body('minimumStock')
+    .isInt({ min: 0 }).withMessage('Minimum stock must be a positive integer'),
+  body('reorderLevel')
+    .isInt({ min: 0 }).withMessage('Reorder level must be a positive integer')
+];
+
 module.exports = {
   validateRegister,
   validateLogin,
@@ -313,5 +372,8 @@ module.exports = {
   validateDoctor,
   validateAppointment,
   validatePrescription,
-  validateLabReport
+  validateLabReport,
+  validateBill,     // Add this
+  validatePayment,
+  validateInventoryItem
 };

@@ -160,9 +160,7 @@ const createBillPDF = async (bill, patient) => {
   });
 };
 
-// @desc    Create new bill
-// @route   POST /api/billing/bills
-// @access  Private (admin, receptionist, doctor)
+// Update the createBill function in billingController.js
 const createBill = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -183,15 +181,33 @@ const createBill = async (req, res) => {
       });
     }
 
+    // Calculate totals manually
+    const services = req.body.services || [];
+    const subtotal = services.reduce((sum, service) => {
+      return sum + (parseFloat(service.price) * parseFloat(service.quantity || 1));
+    }, 0);
+
+    const discountPercentage = req.body.discountPercentage || 0;
+    const discountAmount = (subtotal * discountPercentage) / 100;
+    const afterDiscount = subtotal - discountAmount;
+    const taxPercentage = 18; // GST
+    const taxAmount = (afterDiscount * taxPercentage) / 100;
+    const totalAmount = afterDiscount + taxAmount;
+
     // Generate bill ID
     const billId = await generateBillId();
 
-    // Create bill
+    // Create bill with calculated values
     const bill = await Billing.create({
       ...req.body,
       billId,
+      subtotal: subtotal,
+      discountAmount: discountAmount,
+      taxAmount: taxAmount,
+      totalAmount: totalAmount,
+      outstandingAmount: totalAmount,
       createdBy: req.user.userId,
-      dueDate: req.body.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
+      dueDate: req.body.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
     });
 
     // Generate PDF
@@ -224,10 +240,12 @@ const createBill = async (req, res) => {
     console.error('Create bill error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 };
+
 
 // @desc    Process payment
 // @route   POST /api/billing/payments
@@ -383,8 +401,158 @@ const getBillingStats = async (req, res) => {
   }
 };
 
+// @desc    Get all bills
+// @route   GET /api/billing/bills
+// @access  Private
+const getAllBills = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const patientId = req.query.patientId;
+    const paymentStatus = req.query.paymentStatus;
+    const offset = (page - 1) * limit;
+
+    let whereCondition = {};
+
+    if (patientId) {
+      whereCondition.patientId = patientId;
+    }
+
+    if (paymentStatus) {
+      whereCondition.paymentStatus = paymentStatus;
+    }
+
+    const { count, rows: bills } = await Billing.findAndCountAll({
+      where: whereCondition,
+      include: [
+        {
+          model: Patient,
+          as: 'patient',
+          attributes: ['firstName', 'lastName', 'patientId', 'phone']
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['firstName', 'lastName']
+        }
+      ],
+      limit,
+      offset,
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      count,
+      pagination: {
+        page,
+        pages: Math.ceil(count / limit),
+        limit,
+        total: count
+      },
+      bills
+    });
+
+  } catch (error) {
+    console.error('Get bills error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Get single bill
+// @route   GET /api/billing/bills/:id
+// @access  Private
+const getBill = async (req, res) => {
+  try {
+    const bill = await Billing.findByPk(req.params.id, {
+      include: [
+        {
+          model: Patient,
+          as: 'patient'
+        },
+        {
+          model: Payment,
+          as: 'payments',
+          include: [{
+            model: User,
+            as: 'receiver',
+            attributes: ['firstName', 'lastName']
+          }]
+        },
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['firstName', 'lastName']
+        }
+      ]
+    });
+
+    if (!bill) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bill not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      bill
+    });
+
+  } catch (error) {
+    console.error('Get bill error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
+// @desc    Download bill PDF
+// @route   GET /api/billing/bills/:id/download
+// @access  Private
+const downloadBill = async (req, res) => {
+  try {
+    const bill = await Billing.findByPk(req.params.id);
+
+    if (!bill) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bill not found'
+      });
+    }
+
+    if (!bill.pdfPath || !fs.existsSync(bill.pdfPath)) {
+      return res.status(404).json({
+        success: false,
+        message: 'PDF file not found'
+      });
+    }
+
+    const fileName = `bill_${bill.billId}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+    const fileStream = fs.createReadStream(bill.pdfPath);
+    fileStream.pipe(res);
+
+  } catch (error) {
+    console.error('Download bill error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 module.exports = {
   createBill,
   processPayment,
-  getBillingStats
+  getBillingStats,
+  getAllBills,     // Add this
+  getBill,         // Add this
+  downloadBill   
 };
