@@ -26,11 +26,14 @@
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.6",
+    "pdfkit": "^0.17.2",
     "pg": "^8.16.3",
     "pg-hstore": "^2.3.4",
-    "puppeteer": "^24.17.1",
+    "puppeteer": "^24.18.0",
     "sequelize": "^6.37.7",
-    "sequelize-cli": "^6.6.3"
+    "sequelize-cli": "^6.6.3",
+    "twilio": "^5.8.2",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

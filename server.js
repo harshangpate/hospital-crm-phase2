@@ -73,6 +73,11 @@ app.get('/api/test', async (req, res) => {
 app.use('/api/auth', require('./src/routes/auth'));
 app.use('/api/patients', require('./src/routes/patients'));
 app.use('/api/doctors', require('./src/routes/doctors'));
+app.use('/api/appointments', require('./src/routes/appointments'));
+app.use('/api/medical-records', require('./src/routes/medicalRecords'));
+app.use('/api/prescriptions', require('./src/routes/prescriptions'));
+app.use('/api/lab-reports', require('./src/routes/labReports'));
+app.use('/api/billing', require('./src/routes/billing'));
 
 // Routes placeholder for future
 // app.use('/api/auth', require('./src/routes/auth'));
