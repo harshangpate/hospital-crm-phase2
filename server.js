@@ -25,6 +25,17 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// Add this health check endpoint in your server.js
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    message: 'Server is healthy'
+  });
+});
+
+
 // Security middleware
 app.use(helmet());
 
@@ -101,6 +112,8 @@ app.use('/api/ambulances', require('./src/routes/ambulances'));
 app.use('/api/pharmacy', require('./src/routes/pharmacy'));
 app.use('/api/analytics', require('./src/routes/analytics'));
 app.use('/api/integrations', require('./src/routes/integrations'));
+app.use('/api/technician', require('./src/routes/technician'));
+app.use('/api/pharmacy', require('./src/routes/pharmacy'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

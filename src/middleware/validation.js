@@ -272,12 +272,12 @@ const validateLabReport = [
   body('testName')
     .trim()
     .notEmpty()
-    .isLength({ max: 200 })
+    .isLength({ max: 1000 })
     .withMessage('Test name is required and must be less than 200 characters'),
   body('testType')
     .trim()
     .notEmpty()
-    .isLength({ max: 100 })
+    .isLength({ max: 1000 })
     .withMessage('Test type is required and must be less than 100 characters'),
   body('sampleCollectedAt')
     .optional()
@@ -297,7 +297,7 @@ const validateLabReport = [
   body('technician')
     .optional()
     .trim()
-    .isLength({ max: 100 })
+    .isLength({ max: 1000 })
     .withMessage('Technician name must be less than 100 characters'),
   body('comments')
     .optional()

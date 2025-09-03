@@ -27,6 +27,11 @@ const LabReport = sequelize.define('LabReport', {
       key: 'id'
     }
   },
+  // 🆕 Simple technician assignment field
+  assignedTechnician: {
+    type: DataTypes.STRING,  // Email or name of assigned technician
+    allowNull: true
+  },
   testName: {
     type: DataTypes.STRING,
     allowNull: false
@@ -43,10 +48,12 @@ const LabReport = sequelize.define('LabReport', {
   },
   results: {
     type: DataTypes.JSONB, // Store test results as JSON
-    allowNull: false
+    allowNull: false,
+    defaultValue: {} // 🔄 Changed: Default to empty object instead of required
   },
   normalRanges: {
-    type: DataTypes.JSONB
+    type: DataTypes.JSONB,
+    defaultValue: {}
   },
   status: {
     type: DataTypes.ENUM('sample_collected', 'in_progress', 'completed', 'reviewed'),
@@ -57,9 +64,13 @@ const LabReport = sequelize.define('LabReport', {
     defaultValue: 'normal'
   },
   technician: {
-    type: DataTypes.STRING
+    type: DataTypes.STRING  // Keep for backward compatibility
   },
   comments: {
+    type: DataTypes.TEXT
+  },
+  // 🆕 New field for technician notes
+  technicianNotes: {
     type: DataTypes.TEXT
   },
   pdfPath: {
@@ -72,6 +83,9 @@ const LabReport = sequelize.define('LabReport', {
   emailSentAt: {
     type: DataTypes.DATE
   }
+}, {
+  tableName: 'LabReports',
+  timestamps: true
 });
 
 module.exports = LabReport;
